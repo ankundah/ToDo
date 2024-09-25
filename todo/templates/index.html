@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+
+  <meta charset="utf-8">
+  <title>{{title}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="shortcut icon" href="https://iili.io/dLAVJDP.png" type="image/x-icon">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <!--style-->
+  <style>
+  .card {
+
+   box-shadow: 0 4px 8px 0 rgba(0,0,0,0.5),
+               0 6px 20px 0 rgba(0,0,0,0.39);
+   background: rgb(11, 204, 117);
+   margin-bottom : 5%;
+   border-radius: 25px;
+   padding : 2%;
+   overflow: auto;
+   resize: both;
+   text-overflow: ellipsis;
+  }
+  .card:hover{
+    background: rgb(112, 154, 112);
+  }
+
+  .submit_form{
+
+    text-align: center;
+    padding: 3%;
+    background: rgb(112, 154, 112);
+    border-radius: 25px;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.4),
+                0 6px 20px 0 rgba(0,0,0,0.36);
+  }
+  .alert-info{
+    background: rgb(112, 154, 112);
+    color: rgb(38, 37, 37);
+  }
+  .btn{
+    background-color: rgb(11, 204, 117);
+  }
+  </style>
+
+</head>
+
+<body  class="container-fluid">
+
+  {% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-info">
+    <strong>{{message}}</strong>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <center class="row">
+    <h1><i> TODO LIST</i></h1>
+    <hr />
+  </center>
+
+  <div class="row">
+
+    <div class="col-md-8">
+        <!-- Filter Buttons -->
+        <div id="filterItems" style="margin-bottom: 20px;">
+            <button onclick="filterItems('all')" class="btn btn-secondary">All</button>
+            <button onclick="filterItems('active')" class="btn btn-secondary">Active</button>
+            <button onclick="filterItems('completed')" class="btn btn-secondary">Completed</button>
+        </div>
+        
+        <!-- Todo Items List -->
+        <div id="todo-list">
+            {% for i in list %}
+            <div class="card todo-item {% if i.completed %}completed{% else %}active{% endif %}" id="todo-item-{{ i.id }}">
+                <b>{{ i.title }}</b>
+                <hr/>
+                <strong> - </strong>{{ i.details }}
+                <hr/>
+                <strong> Date:</strong>{{ i.date }}
+                <br />
+                <br />
+                <div style="display: flex; justify-content: space-between; padding: 0 4% 3% 4%;">
+                    {% if not i.completed %}
+                    <button value="complete" type="button" class="btn btn-success complete-btn" data-id="{{ i.id }}">
+                        <span class="glyphicon glyphicon-ok"></span> &nbsp; complete
+                    </button>
+                    {% endif %}
+                    <form action="/del/{{ i.id }}" method="POST">
+                        {% csrf_token %}
+                        <button value="remove" type="submit" class="btn btn-success">
+                            <span class="glyphicon glyphicon-trash"></span> &nbsp; remove
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+</div>
+
+
+    <div class="col-md-1"> </div>
+    <div class="col-md-3" >
+      <div  class="submit_form">
+      <form  method="POST">
+        {% csrf_token %}
+        {{forms.as_p}}
+        <center>
+        <input type="submit" class="btn btn-default" value="submit" />
+      </center>
+      </form>
+    </div>
+  </div>
+</div>
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        flatpickr("#datetime", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+        });
+    });
+
+    function filterItems(filter) {
+    var items = document.getElementsByClassName('todo-item');
+    for (var i = 0; i < items.length; i++) {
+        if (filter === 'all') {
+            items[i].style.display = 'block';
+        } else if (filter === 'active' && items[i].classList.contains('active')) {
+            items[i].style.display = 'block';
+        } else if (filter === 'completed' && items[i].classList.contains('completed')) {
+            items[i].style.display = 'block';
+        } else {
+            items[i].style.display = 'none';
+        }
+    }
+}
+
+// Adding event listeners to complete buttons
+document.addEventListener('DOMContentLoaded', function() {
+    var completeButtons = document.getElementsByClassName('complete-btn');
+    for (var i = 0; i < completeButtons.length; i++) {
+        completeButtons[i].addEventListener('click', function() {
+            var itemId = this.getAttribute('data-id');
+            completeItem(itemId);
+        });
+    }
+});
+
+function completeItem(itemId) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/complete/' + itemId , true);  // Ensure the URL is correct
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');  // Ensure CSRF token is correct
+
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+            // Update the item's class to completed
+            var item = document.getElementById('todo-item-' + itemId);
+            item.classList.remove('active');
+            item.classList.add('completed');
+
+            var completeButton = item.querySelector('.complete-btn');
+            if (completeButton) {
+                completeButton.remove();
+            }
+            filterItems('all');  // Refresh the filter to reflect the change
+        }
+    };
+
+    xhr.send();
+}
+</script>
+</html>
